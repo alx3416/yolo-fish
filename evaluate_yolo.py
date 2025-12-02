@@ -2,6 +2,7 @@ import cv2
 import os
 from ultralytics import YOLO
 import glob
+import time
 
 # --- 1. CONFIGURACIÓN INICIAL ---
 
@@ -10,7 +11,7 @@ output_folder = 'output'
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
-# Carga del modelo YOLOv8.
+# Carga del modelo YOLOv8
 model = YOLO('models/yolov8x_21sp_5364img.pt')
 
 # Ruta de la carpeta con las imágenes de entrada
@@ -23,8 +24,9 @@ print(f"Total de imágenes encontradas: {len(image_files)}")
 
 # Contador para nombrar los frames de salida
 frame_count = 0
+start_time = time.time()
 
-# --- 2. PROCESAMIENTO DE LAS IMÁGENES ---
+# --- 2. PROCESAMIENTO DE LAS IMÁGENES (SIN TRACKING) ---
 
 for image_path in image_files:
     # Leer la imagen
@@ -35,19 +37,21 @@ for image_path in image_files:
 
         # Mostrar progreso cada 100 imágenes
         if frame_count % 100 == 0:
-            print(f"Procesando imagen {frame_count}/{len(image_files)}...")
+            elapsed = time.time() - start_time
+            avg_time = elapsed / frame_count
+            remaining = (len(image_files) - frame_count) * avg_time
+            print(f"Procesando imagen {frame_count}/{len(image_files)} | "
+                  f"Tiempo promedio: {avg_time:.3f}s | "
+                  f"Tiempo restante estimado: {remaining/60:.1f}min")
 
-        # Realizar la detección y seguimiento en el frame.
-        results = model.track(
+        # Realizar SOLO la detección (sin tracking)
+        results = model.predict(
             frame,
-            persist=True,
-            tracker='bytetrack.yaml',
-            # classes=[15],  # Clase 'fish' en COCO.
             conf=0.4,
-            verbose=False  # Suprime los mensajes en la línea de comandos
+            verbose=False
         )
 
-        # Obtener el frame con las cajas delimitadoras y los IDs de seguimiento dibujados.
+        # Obtener el frame con las cajas delimitadoras dibujadas
         annotated_frame = results[0].plot()
 
         # Guardar el frame anotado en la carpeta 'output'
@@ -55,7 +59,7 @@ for image_path in image_files:
         cv2.imwrite(frame_filename, annotated_frame)
 
         # Mostrar el frame en una ventana de OpenCV
-        cv2.imshow("YOLOv8 Tracking", annotated_frame)
+        cv2.imshow("YOLOv8 Detection", annotated_frame)
 
         # Salir si se presiona 'q'
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -67,5 +71,17 @@ for image_path in image_files:
 # --- 3. LIMPIEZA Y LIBERACIÓN DE RECURSOS ---
 
 cv2.destroyAllWindows()
-print(f"Procesamiento completado. {frame_count} imágenes procesadas.")
-print(f"Imágenes anotadas guardadas en la carpeta: {output_folder}")
+
+# Estadísticas finales
+total_time = time.time() - start_time
+avg_time_per_image = total_time / frame_count if frame_count > 0 else 0
+
+print(f"\n{'='*60}")
+print(f"Procesamiento completado")
+print(f"{'='*60}")
+print(f"Imágenes procesadas: {frame_count}/{len(image_files)}")
+print(f"Tiempo total: {total_time/60:.2f} minutos")
+print(f"Tiempo promedio por imagen: {avg_time_per_image:.3f} segundos")
+print(f"FPS promedio: {1/avg_time_per_image:.2f}")
+print(f"Imágenes anotadas guardadas en: {output_folder}")
+print(f"{'='*60}")
