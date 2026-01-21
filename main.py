@@ -13,7 +13,7 @@ if not os.path.exists(output_folder):
 model = YOLO('models/yolov8x_21sp_5364img.pt')
 
 # Ruta del archivo de video de entrada.
-video_path = 'data/test.mp4'
+video_path = 'data/test2.mp4'
 cap = cv2.VideoCapture(video_path)
 
 # Obtener propiedades del video
@@ -25,7 +25,7 @@ frame_count = 0  # Contador para nombrar los frames de salida
 # Configuración del escritor de video de salida (Mantengo el VideoWriter para el flujo de datos)
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 # Puedes comentar la siguiente línea si SOLO quieres guardar frames y no el video completo:
-out = cv2.VideoWriter('output_tracking.mp4', fourcc, fps, (frame_width, frame_height))
+out = cv2.VideoWriter('output_tracking2.mp4', fourcc, fps, (frame_width, frame_height))
 
 # --- 2. PROCESAMIENTO DEL VIDEO ---
 
@@ -41,9 +41,17 @@ while cap.isOpened():
             persist=True,
             tracker='bytetrack.yaml',
             # classes=[15],  # Clase 'fish' en COCO.
-            conf=0.1,
+            conf=0.05,
+            iou=0.3,
+            max_det=20,
             verbose=False  # Suprime los mensajes en la línea de comandos
         )
+
+        # Cambiar todas las clases detectadas a "Fish"
+        if results[0].boxes is not None and len(results[0].boxes) > 0:
+            for i in range(len(results[0].boxes)):
+                results[0].boxes.cls[i] = 0  # Asignar clase 0 a todas las detecciones
+            results[0].names = {0: 'Fish'}  # Renombrar la clase 0 como "Fish"
 
         # Obtener el frame con las cajas delimitadoras y los IDs de seguimiento dibujados.
         annotated_frame = results[0].plot()
